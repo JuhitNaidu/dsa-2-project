@@ -1,0 +1,57 @@
+import java.util.*;
+import java.time.Instant;
+
+class DNSRecord {
+    String domain;
+    long expiry;
+
+    DNSRecord(String domain, long expiry) {
+        this.domain = domain;
+        this.expiry = expiry;
+    }
+}
+
+public class javac_DNSC {
+    private Map<String, DNSRecord> hashmap = new HashMap<>();
+    private PriorityQueue<DNSRecord> heap = new PriorityQueue<>(Comparator.comparingLong(r -> r.expiry));
+
+    // Add or update a domain record
+    public void addRecord(String domain, long ttlSeconds) {
+        long expiry = Instant.now().getEpochSecond() + ttlSeconds;
+        DNSRecord record = new DNSRecord(domain, expiry);
+        hashmap.put(domain, record);
+        heap.offer(record);
+    }
+
+    // Remove expired domains
+    public void expireDomains() {
+        long now = Instant.now().getEpochSecond();
+        while (!heap.isEmpty() && heap.peek().expiry <= now) {
+            DNSRecord expired = heap.poll();
+            DNSRecord current = hashmap.get(expired.domain);
+            if (current != null && current.expiry <= now) {
+                hashmap.remove(expired.domain);
+                System.out.println("Expired: " + expired.domain);
+            }
+        }
+    }
+
+    // Lookup domain
+    public DNSRecord lookup(String domain) {
+        expireDomains();
+        return hashmap.get(domain);
+    }
+
+    // Demo
+    public static void main(String[] args) throws InterruptedException {
+        javac_DNSC cache = new javac_DNSC();
+        cache.addRecord("domain1.in", 3);
+        cache.addRecord("domain2.in", 5);
+        cache.addRecord("domain3.in", 8);
+
+        System.out.println("Initial cache size: " + cache.hashmap.size());
+        Thread.sleep(4000);
+        cache.expireDomains();
+        System.out.println("Cache size after expiry: " + cache.hashmap.size());
+    }
+}
